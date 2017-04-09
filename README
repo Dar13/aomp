@@ -1,0 +1,5 @@
+This is a collection of attempts to model the atomic primitives used in the
+"Art of MultiProcessor Programming" by Shavit & Herlihy in C++11/14
+
+Implemented:
+  - AtomicMarkableReference
