@@ -8,23 +8,16 @@ template <typename T>
 class MarkableReference
 {
 public:
+    // Take ownership of 'ref', when this object is destroyed so is the 
+    // current reference.
     MarkableReference(T* ref, bool init_mark)
-        : m_reference(reinterpret_cast<uintptr_t>(ref))
     {
-        // Most pointers are aligned to some degree, make sure this one is
-        // at least 8-byte aligned.
-        // This is needed as we're going to be stealing the bottom bit.
-        if(m_reference.load() & 0x7)
-        {
-            throw std::invalid_argument("Pointer given to MarkableReference is not aligned correctly! "
-                                        "Must be at least 8-byte aligned!");
-        }
+        set(ref, init_mark);
+    }
 
-        if(init_mark)
-        {
-            // The mark bit is the least-significant bit
-            m_reference |= 0x1;
-        }
+    ~MarkableReference()
+    {
+        delete reference();
     }
 
     //
@@ -34,8 +27,12 @@ public:
     // This class is modeled after the Java AtomicMarkableReference atomic primitive.
     //
 
+    inline bool is_marked() { return (m_reference.load() & 0x1); }
+
     bool mark(T* expected_ref, bool new_mark)
     {
+        // Expected = expected reference with current mark
+        // New = expected reference with new mark
         uintptr_t expected = reinterpret_cast<uintptr_t>(expected_ref) | (m_reference & 0x1);
         uintptr_t new_value = reinterpret_cast<uintptr_t>(expected_ref) | new_mark;
 
@@ -57,15 +54,35 @@ public:
         return reinterpret_cast<T*>(value ^ mark);
     }
 
+    T* reference()
+    {
+        return reinterpret_cast<T*>(m_reference.load() & ~(1ul));
+    }
+
     void set(T* ref, bool mark)
     {
-        uintptr_t value = reinterpret_cast<uintptr_t>(ref) & mark;
+        // Most pointers are aligned to some degree, make sure this one is
+        // at least 8-byte aligned.
+        // This is needed as we're going to be stealing the bottom bit.
+        uintptr_t value = reinterpret_cast<uintptr_t>(ref);
+        if(value & 0x7)
+        {
+            throw std::invalid_argument("Pointer given to MarkableReference is not aligned correctly! "
+                                        "Must be at least 8-byte aligned!");
+        }
+
+        value |= mark;
         m_reference.store(value);
     }
 
     T* operator->() const
     {
-        return reinterpret_cast<T*>(m_reference.load() ^ (m_reference & 0x1));
+        return reinterpret_cast<T*>(m_reference.load() & ~(1ul));
+    }
+
+    T& operator*()
+    {
+        return *(reinterpret_cast<T*>(m_reference.load() & ~(1ul)));
     }
 protected:
     std::atomic<uintptr_t> m_reference;
