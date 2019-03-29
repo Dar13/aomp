@@ -15,6 +15,11 @@ public:
         set(ref, init_mark);
     }
 
+    MarkableReference(MarkableReference<T>& ref)
+    {
+        set(ref.reference(), ref.is_marked());
+    }
+
     ~MarkableReference()
     {
         delete reference();
@@ -27,7 +32,7 @@ public:
     // This class is modeled after the Java AtomicMarkableReference atomic primitive.
     //
 
-    inline bool is_marked() { return (m_reference.load() & 0x1); }
+    inline bool is_marked() const { return (m_reference.load() & 0x1); }
 
     bool mark(T* expected_ref, bool new_mark)
     {
@@ -36,6 +41,13 @@ public:
         uintptr_t expected = reinterpret_cast<uintptr_t>(expected_ref) | (m_reference & 0x1);
         uintptr_t new_value = reinterpret_cast<uintptr_t>(expected_ref) | new_mark;
 
+        return m_reference.compare_exchange_strong(expected, new_value);
+    }
+
+    inline uintptr_t raw() { return m_reference.load(); }
+
+    bool compareAndSwap(uintptr_t expected, uintptr_t new_value)
+    {
         return m_reference.compare_exchange_strong(expected, new_value);
     }
 
@@ -54,7 +66,7 @@ public:
         return reinterpret_cast<T*>(value ^ mark);
     }
 
-    T* reference()
+    T* reference() const
     {
         return reinterpret_cast<T*>(m_reference.load() & ~(1ul));
     }
@@ -78,6 +90,11 @@ public:
     T* operator->() const
     {
         return reinterpret_cast<T*>(m_reference.load() & ~(1ul));
+    }
+
+    void operator=(const MarkableReference<T>& o)
+    {
+        this->set(o.reference(), o.is_marked());
     }
 
     T& operator*()

@@ -1,10 +1,9 @@
 .PHONY: all
-all: markable_ref
-
-.PHONY: markable_ref
-markable_ref:
+all:
 	make -C markable_ref
+	make -C lazy_list
 
 .PHONY: clean
 clean:
 	make -C markable_ref clean
+	make -C lazy_list clean

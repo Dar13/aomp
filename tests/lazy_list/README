@@ -1,0 +1,4 @@
+A good stress-test:
+for i in {1..1000}; do lazy_list_example.run; done
+
+If it hangs, it's broke!
