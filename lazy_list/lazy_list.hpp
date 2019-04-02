@@ -143,11 +143,14 @@ class LazyList
                     return false;
                 }
 
+                // TODO: Is this worth it? Only construct if we know we're gonna insert
+                //Node* node = new Node(value);
                 node->next = right;
                 if(__sync_val_compare_and_swap(&(left->next), right, node) == right)
                 {
                     return true;
                 }
+                //delete node;
             }
         }
 
